@@ -27,26 +27,34 @@ jobs:
           targets: x86_64-pc-windows-msvc
           components: rustfmt
 
-      - name: Build Codex Windows binaries
+      - name: Cache Cargo registry and git dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-windows-server-2016-${{ runner.os }}-${{ hashFiles('codex-rs/Cargo.lock') }}
+          restore-keys: |
+            cargo-windows-server-2016-${{ runner.os }}-
+
+      - name: Build Codex executable
         shell: pwsh
         run: |
           $env:RUSTFLAGS = ""
-          cargo build --release --target x86_64-pc-windows-msvc --bin codex --bin codex-command-runner --bin codex-windows-sandbox-setup
+          cargo build --profile dev-small --target x86_64-pc-windows-msvc --bin codex
 
       - name: Stage binaries
         shell: pwsh
         run: |
-          $target = "target\x86_64-pc-windows-msvc\release"
+          $target = "target\x86_64-pc-windows-msvc\dev-small"
           $stage = "$target\stage-windows-server-2016"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item "$target\codex.exe" $stage
-          Copy-Item "$target\codex-command-runner.exe" $stage
-          Copy-Item "$target\codex-windows-sandbox-setup.exe" $stage
 
       - name: Verify ResizePseudoConsole is not a static import
         shell: pwsh
         run: |
-          $target = "target\x86_64-pc-windows-msvc\release"
+          $target = "target\x86_64-pc-windows-msvc\dev-small"
           $dumpbin = Get-Command dumpbin.exe -ErrorAction SilentlyContinue
           if (-not $dumpbin) {
             $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -57,7 +65,7 @@ jobs:
             $dumpbin = $dumpbin.Source
           }
 
-          foreach ($exe in @("codex.exe", "codex-command-runner.exe", "codex-windows-sandbox-setup.exe")) {
+          foreach ($exe in @("codex.exe")) {
             $imports = & $dumpbin /imports "$target\$exe"
             if ($imports -match "ResizePseudoConsole") {
               Write-Error "$exe statically imports ResizePseudoConsole"
@@ -68,4 +76,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: codex-windows-server-2016-x64-msvc
-          path: codex-rs/target/x86_64-pc-windows-msvc/release/stage-windows-server-2016/*
+          path: codex-rs/target/x86_64-pc-windows-msvc/dev-small/stage-windows-server-2016/*
