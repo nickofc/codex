@@ -36,6 +36,7 @@ use codex_windows_sandbox::hide_current_user_profile_dir;
 use codex_windows_sandbox::log_note;
 use codex_windows_sandbox::parse_policy;
 use codex_windows_sandbox::read_frame;
+use codex_windows_sandbox::resize_pseudoconsole;
 use codex_windows_sandbox::read_handle_loop;
 use codex_windows_sandbox::spawn_process_with_pipes;
 use codex_windows_sandbox::to_wide;
@@ -55,8 +56,6 @@ use windows_sys::Win32::Storage::FileSystem::CreateFileW;
 use windows_sys::Win32::Storage::FileSystem::FILE_GENERIC_READ;
 use windows_sys::Win32::Storage::FileSystem::FILE_GENERIC_WRITE;
 use windows_sys::Win32::Storage::FileSystem::OPEN_EXISTING;
-use windows_sys::Win32::System::Console::COORD;
-use windows_sys::Win32::System::Console::ResizePseudoConsole;
 use windows_sys::Win32::System::JobObjects::AssignProcessToJobObject;
 use windows_sys::Win32::System::JobObjects::CreateJobObjectW;
 use windows_sys::Win32::System::JobObjects::JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
@@ -441,16 +440,12 @@ fn spawn_input_loop(
                 } => {
                     if let Ok(guard) = hpc_handle.lock()
                         && let Some(hpc) = guard.as_ref()
+                        && let Err(err) = resize_pseudoconsole(*hpc, rows, cols)
                     {
-                        unsafe {
-                            let _ = ResizePseudoConsole(
-                                *hpc,
-                                COORD {
-                                    X: cols as i16,
-                                    Y: rows as i16,
-                                },
-                            );
-                        }
+                        log_note(
+                            &format!("runner conpty resize failed: {err}"),
+                            log_dir.as_deref(),
+                        );
                     }
                 }
                 Message::Terminate { .. } => {

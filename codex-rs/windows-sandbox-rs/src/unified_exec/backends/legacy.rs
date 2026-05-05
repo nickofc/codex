@@ -3,6 +3,7 @@ use super::windows_common::normalize_windows_tty_input;
 use crate::acl::revoke_ace;
 use crate::conpty::ConptyInstance;
 use crate::conpty::spawn_conpty_process_as_user;
+use crate::conpty_resize::resize_pseudoconsole;
 use crate::desktop::LaunchDesktop;
 use crate::logging::log_failure;
 use crate::logging::log_success;
@@ -33,8 +34,6 @@ use windows_sys::Win32::Foundation::GetLastError;
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
 use windows_sys::Win32::Storage::FileSystem::WriteFile;
-use windows_sys::Win32::System::Console::COORD;
-use windows_sys::Win32::System::Console::ResizePseudoConsole;
 use windows_sys::Win32::System::Threading::GetExitCodeProcess;
 use windows_sys::Win32::System::Threading::INFINITE;
 use windows_sys::Win32::System::Threading::PROCESS_INFORMATION;
@@ -260,22 +259,7 @@ fn resize_conpty_handle(hpc: &Arc<StdMutex<Option<HANDLE>>>, size: TerminalSize)
         .as_ref()
         .copied()
         .ok_or_else(|| anyhow::anyhow!("process is not attached to a PTY"))?;
-    let result = unsafe {
-        ResizePseudoConsole(
-            hpc,
-            COORD {
-                X: size.cols as i16,
-                Y: size.rows as i16,
-            },
-        )
-    };
-    if result == 0 {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!(
-            "failed to resize console: HRESULT {result}"
-        ))
-    }
+    resize_pseudoconsole(hpc, size.rows, size.cols)
 }
 
 #[allow(clippy::too_many_arguments)]

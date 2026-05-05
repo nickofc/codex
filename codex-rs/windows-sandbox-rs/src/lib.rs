@@ -16,6 +16,7 @@ windows_modules!(
     allow,
     audit,
     cap,
+    conpty_resize,
     desktop,
     dpapi,
     env,
@@ -100,6 +101,8 @@ pub use cap::workspace_cap_sid_for_cwd;
 pub use conpty::ConptyInstance;
 #[cfg(target_os = "windows")]
 pub use conpty::spawn_conpty_process_as_user;
+#[cfg(target_os = "windows")]
+pub use conpty_resize::resize_pseudoconsole;
 #[cfg(target_os = "windows")]
 pub use desktop::LaunchDesktop;
 #[cfg(target_os = "windows")]
