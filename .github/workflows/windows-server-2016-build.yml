@@ -2,6 +2,9 @@ name: windows-server-2016-build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - windows-server-2016-conpty-load
 
 jobs:
   build:
